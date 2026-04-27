@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Food Cost Calculator</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #ffffff;
+      --bg-secondary: #f6f6f4;
+      --bg-tertiary: #f0eeea;
+      --bg-success: #eaf3de;
+      --bg-warning: #faeeda;
+      --bg-danger: #fcebeb;
+      --text: #1a1a18;
+      --text-secondary: #5f5e5a;
+      --text-tertiary: #888780;
+      --text-success: #3b6d11;
+      --text-warning: #854f0b;
+      --text-danger: #a32d2d;
+      --border: rgba(0,0,0,0.12);
+      --border-md: rgba(0,0,0,0.22);
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #1e1e1c;
+        --bg-secondary: #2a2a28;
+        --bg-tertiary: #242422;
+        --bg-success: #173404;
+        --bg-warning: #412402;
+        --bg-danger: #501313;
+        --text: #f0eeea;
+        --text-secondary: #b4b2a9;
+        --text-tertiary: #888780;
+        --text-success: #c0dd97;
+        --text-warning: #fac775;
+        --text-danger: #f09595;
+        --border: rgba(255,255,255,0.1);
+        --border-md: rgba(255,255,255,0.2);
+      }
+    }
+    body {
+      font-family: var(--font);
+      background: var(--bg-tertiary);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+    .container { max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+    .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 1.5rem; }
+    .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+    .section-label { font-size: 12px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px; font-weight: 500; }
+    .url-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .url-row input[type="text"] { flex: 1; min-width: 180px; }
+    input, select, button { font-family: var(--font); font-size: 14px; border-radius: var(--radius-md); border: 0.5px solid var(--border-md); background: var(--bg); color: var(--text); padding: 0 12px; height: 36px; outline: none; }
+    input:focus, select:focus { border-color: var(--text-secondary); }
+    button { cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+    button:hover { background: var(--bg-secondary); }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .parse-btn { padding: 0 16px; }
+    .status { font-size: 13px; color: var(--text-secondary); margin-top: 8px; min-height: 18px; }
+    .status.error { color: var(--text-danger); }
+    .metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1rem; }
+    @media (max-width: 480px) { .metrics { grid-template-columns: 1fr 1fr; } }
+    .metric { background: var(--bg-secondary); border-radius: var(--radius-md); padding: 14px 16px; }
+    .metric-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+    .metric-value { font-size: 20px; font-weight: 500; }
+    .metric-value.highlight { color: var(--text-success); }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 12px; color: var(--text-secondary); font-weight: 500; padding: 0 8px 10px 0; border-bottom: 0.5px solid var(--border); }
+    th:last-child { text-align: right; padding-right: 0; }
+    td { padding: 10px 8px 10px 0; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+    td:last-child { text-align: right; padding-right: 0; font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+    td input[type="number"] { width: 70px; height: 30px; font-size: 13px; text-align: center; padding: 0 6px; }
+    .settings-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 1rem; }
+    .field { display: flex; flex-direction: column; gap: 4px; }
+    .field label { font-size: 12px; color: var(--text-secondary); }
+    .field input[type="number"] { width: 90px; }
+    .field select { width: 140px; }
+    .recipe-title { font-size: 16px; font-weight: 500; margin-bottom: 4px; }
+    .recipe-meta { font-size: 13px; color: var(--text-secondary); margin-bottom: 1rem; }
+    .add-ing-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
+    .add-ing-row input[type="text"] { width: 140px; }
+    .add-ing-row input[type="number"] { width: 65px; height: 32px; }
+    .add-btn { font-size: 13px; padding: 0 12px; height: 32px; }
+    .del-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--text-tertiary); padding: 2px 6px; border-radius: 4px; height: auto; }
+    .del-btn:hover { background: var(--bg-danger); color: var(--text-danger); }
+    .selling-toggle { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); cursor: pointer; padding: 4px 0; }
+    .selling-toggle input { cursor: pointer; width: auto; height: auto; padding: 0; }
+    .profit-section { margin-top: 1rem; padding-top: 1rem; border-top: 0.5px solid var(--border); }
+    .profit-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .profit-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    @media (max-width: 480px) { .profit-metrics { grid-template-columns: 1fr 1fr; } }
+    .tag { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: var(--radius-md); margin-left: 6px; }
+    .tag.success { background: var(--bg-success); color: var(--text-success); }
+    .tag.warning { background: var(--bg-warning); color: var(--text-warning); }
+    .tag.danger { background: var(--bg-danger); color: var(--text-danger); }
+    .empty-state { text-align: center; padding: 2rem; color: var(--text-tertiary); font-size: 14px; }
+    .api-notice { background: var(--bg-warning); border: 0.5px solid var(--border); border-radius: var(--radius-md); padding: 10px 14px; font-size: 13px; color: var(--text-warning); margin-bottom: 1rem; }
+    .api-notice a { color: var(--text-warning); }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Food Cost Calculator</h1>
+  <p class="subtitle">Paste a recipe URL to get ingredient costs and profit margins for your country</p>
+
+  <div class="api-notice" id="apiNotice">
+    To use AI recipe parsing, add your Anthropic API key below. <a href="https://console.anthropic.com/settings/keys" target="_blank">Get one here →</a>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Setup</div>
+    <div class="settings-row">
+      <div class="field" style="flex:1;">
+        <label>Anthropic API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-..." style="width:100%;" />
+      </div>
+      <div class="field">
+        <label>Country</label>
+        <select id="countrySel" onchange="recalc()">
+          <option value="IL">🇮🇱 Israel (₪)</option>
+          <option value="US">🇺🇸 USA ($)</option>
+          <option value="UK">🇬🇧 UK (£)</option>
+          <option value="DE">🇩🇪 Germany (€)</option>
+          <option value="FR">🇫🇷 France (€)</option>
+          <option value="AU">🇦🇺 Australia (A$)</option>
+          <option value="CA">🇨🇦 Canada (C$)</option>
+          <option value="JP">🇯🇵 Japan (¥)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-label">Recipe source</div>
+    <div class="url-row">
+      <input type="text" id="recipeUrl" placeholder="Paste a recipe URL (e.g. allrecipes.com/...)" style="flex:1;" />
+      <button class="parse-btn" id="parseBtn" onclick="parseRecipe()">Analyze →</button>
+    </div>
+    <div class="status" id="status">Enter a recipe URL and click Analyze</div>
+  </div>
+
+  <div id="recipeSection" style="display:none;">
+    <div id="recipeTitleEl" class="recipe-title"></div>
+    <div id="recipeMetaEl" class="recipe-meta"></div>
+
+    <div class="settings-row">
+      <div class="field">
+        <label>Servings</label>
+        <input type="number" id="servings" value="4" min="1" max="100" step="1" onchange="recalc()" oninput="recalc()" />
+      </div>
+      <div class="field">
+        <label>Overhead %</label>
+        <input type="number" id="overhead" value="15" min="0" max="200" step="1" onchange="recalc()" oninput="recalc()" />
+      </div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric"><div class="metric-label">Total ingredient cost</div><div class="metric-value" id="mTotal">—</div></div>
+      <div class="metric"><div class="metric-label">With overhead</div><div class="metric-value" id="mOverhead">—</div></div>
+      <div class="metric"><div class="metric-label">Cost per serving</div><div class="metric-value" id="mServing">—</div></div>
+    </div>
+
+    <div class="card">
+      <div class="section-label">Ingredients &amp; costs</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Ingredient</th>
+            <th>Qty &amp; unit</th>
+            <th style="text-align:right;">Unit price</th>
+            <th style="text-align:right;">Cost</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="ingTable"></tbody>
+      </table>
+      <div class="add-ing-row">
+        <input type="text" id="newName" placeholder="Ingredient name" />
+        <input type="number" id="newQty" placeholder="Qty" min="0" step="any" />
+        <input type="text" id="newUnit" placeholder="Unit" style="width:60px;" />
+        <input type="number" id="newPrice" placeholder="Price" min="0" step="any" />
+        <button class="add-btn" onclick="addIngredient()">+ Add</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <label class="selling-toggle">
+        <input type="checkbox" id="sellingToggle" onchange="toggleSelling()" />
+        I'm selling this dish — calculate profit margin
+      </label>
+      <div id="profitSection" style="display:none;" class="profit-section">
+        <div class="profit-row">
+          <div class="field">
+            <label>Selling price per serving</label>
+            <input type="number" id="sellPrice" value="0" min="0" step="any" onchange="recalc()" oninput="recalc()" />
+          </div>
+          <div class="field">
+            <label>Labour cost (total)</label>
+            <input type="number" id="labourCost" value="0" min="0" step="any" onchange="recalc()" oninput="recalc()" />
+          </div>
+        </div>
+        <div class="profit-metrics">
+          <div class="metric"><div class="metric-label">Revenue</div><div class="metric-value" id="mRevenue">—</div></div>
+          <div class="metric"><div class="metric-label">Total cost</div><div class="metric-value" id="mTotalCost">—</div></div>
+          <div class="metric"><div class="metric-label">Gross profit <span id="marginTag" class="tag"></span></div><div class="metric-value highlight" id="mProfit">—</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const CURRENCY = {
+  IL: '₪', US: '$', UK: '£', DE: '€', FR: '€', AU: 'A$', CA: 'C$', JP: '¥'
+};
+let ingredients = [];
+
+function getCountry() { return document.getElementById('countrySel').value; }
+function getCurrency() { return CURRENCY[getCountry()]; }
+function fmt(n) {
+  const c = getCountry();
+  if (c === 'JP') return getCurrency() + Math.round(n).toLocaleString();
+  return getCurrency() + parseFloat(n).toFixed(2);
+}
+
+function toggleSelling() {
+  document.getElementById('profitSection').style.display =
+    document.getElementById('sellingToggle').checked ? 'block' : 'none';
+  recalc();
+}
+
+function recalc() {
+  const servings = Math.max(1, parseInt(document.getElementById('servings').value) || 1);
+  const overheadPct = parseFloat(document.getElementById('overhead').value) || 0;
+  const totalIng = ingredients.reduce((s, i) => s + (parseFloat(i.price) || 0) * (parseFloat(i.qty) || 1), 0);
+  const withOverhead = totalIng * (1 + overheadPct / 100);
+  const perServing = withOverhead / servings;
+  document.getElementById('mTotal').textContent = fmt(totalIng);
+  document.getElementById('mOverhead').textContent = fmt(withOverhead);
+  document.getElementById('mServing').textContent = fmt(perServing);
+  renderTable();
+  if (document.getElementById('sellingToggle').checked) {
+    const sellPrice = parseFloat(document.getElementById('sellPrice').value) || 0;
+    const labour = parseFloat(document.getElementById('labourCost').value) || 0;
+    const revenue = sellPrice * servings;
+    const totalCost = withOverhead + labour;
+    const profit = revenue - totalCost;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    document.getElementById('mRevenue').textContent = fmt(revenue);
+    document.getElementById('mTotalCost').textContent = fmt(totalCost);
+    document.getElementById('mProfit').textContent = fmt(profit) + ' (' + margin.toFixed(1) + '%)';
+    const tag = document.getElementById('marginTag');
+    if (margin >= 60) { tag.textContent = 'great'; tag.className = 'tag success'; }
+    else if (margin >= 30) { tag.textContent = 'ok'; tag.className = 'tag warning'; }
+    else { tag.textContent = 'low'; tag.className = 'tag danger'; }
+  }
+}
+
+function renderTable() {
+  const tbody = document.getElementById('ingTable');
+  if (!ingredients.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:1.5rem;color:var(--text-tertiary);font-size:13px;">No ingredients yet</td></tr>';
+    return;
+  }
+  tbody.innerHTML = ingredients.map((ing, i) => {
+    const cost = (parseFloat(ing.price) || 0) * (parseFloat(ing.qty) || 1);
+    return `<tr>
+      <td>${ing.name}</td>
+      <td><input type="number" value="${parseFloat(ing.qty).toFixed(2)}" min="0" step="any" style="width:55px;" onchange="ingredients[${i}].qty=this.value;recalc()" /> ${ing.unit}</td>
+      <td style="text-align:right;"><input type="number" value="${parseFloat(ing.price).toFixed(2)}" min="0" step="any" style="width:70px;text-align:right;" onchange="ingredients[${i}].price=this.value;recalc()" /></td>
+      <td>${fmt(cost)}</td>
+      <td><button class="del-btn" onclick="deleteIng(${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function deleteIng(i) { ingredients.splice(i, 1); recalc(); }
+
+function addIngredient() {
+  const name = document.getElementById('newName').value.trim();
+  const qty = parseFloat(document.getElementById('newQty').value) || 1;
+  const unit = document.getElementById('newUnit').value.trim() || 'unit';
+  const price = parseFloat(document.getElementById('newPrice').value) || 0;
+  if (!name) return;
+  ingredients.push({ name, qty, unit, price });
+  document.getElementById('newName').value = '';
+  document.getElementById('newQty').value = '';
+  document.getElementById('newUnit').value = '';
+  document.getElementById('newPrice').value = '';
+  recalc();
+  document.getElementById('recipeSection').style.display = 'block';
+  document.getElementById('recipeTitleEl').textContent = document.getElementById('recipeTitleEl').textContent || 'My Recipe';
+  document.getElementById('recipeMetaEl').textContent = document.getElementById('recipeMetaEl').textContent || 'Manual entry';
+}
+
+async function parseRecipe() {
+  const url = document.getElementById('recipeUrl').value.trim();
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!url) { setStatus('Please enter a recipe URL.', true); return; }
+  if (!apiKey) { setStatus('Please enter your Anthropic API key above first.', true); return; }
+
+  const country = getCountry();
+  const countryName = document.getElementById('countrySel').options[document.getElementById('countrySel').selectedIndex].text;
+  const btn = document.getElementById('parseBtn');
+  btn.disabled = true; btn.textContent = 'Analyzing...';
+  setStatus('Fetching and analyzing recipe...');
+
+  const prompt = `You are a recipe ingredient cost estimator. The user has provided this recipe URL: ${url}
+
+1. Identify the recipe name and estimate a realistic number of servings (default 4 if unsure).
+2. List all ingredients with realistic quantities and units.
+3. For each ingredient, estimate a realistic retail price in the local currency of: ${countryName}. Use real-world supermarket prices. For Israel, prices are in Israeli Shekels (₪). Be specific: e.g. 1 egg in Israel ≈ 1.2₪, 1kg chicken breast ≈ 40₪.
+
+IMPORTANT: price is PER UNIT, qty is how much of that unit is used.
+
+Respond ONLY with valid JSON, no markdown, no backticks:
+{"title":"Recipe name","servings":4,"ingredients":[{"name":"chicken breast","qty":0.5,"unit":"kg","price":40.0}]}`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    const data = await res.json();
+    let text = (data.content || []).filter(b => b.type === 'text').map(b => b.text).join('');
+    text = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(text);
+    ingredients = parsed.ingredients || [];
+    document.getElementById('recipeTitleEl').textContent = parsed.title || 'Recipe';
+    document.getElementById('recipeMetaEl').textContent = `Estimated ${parsed.servings || 4} servings · prices in ${countryName}`;
+    document.getElementById('servings').value = parsed.servings || 4;
+    document.getElementById('recipeSection').style.display = 'block';
+    document.getElementById('apiNotice').style.display = 'none';
+    setStatus('Recipe analyzed! Adjust prices or quantities as needed.');
+    recalc();
+  } catch (e) {
+    setStatus('Could not parse this recipe. Check your API key, or add ingredients manually.', true);
+    document.getElementById('recipeSection').style.display = 'block';
+    document.getElementById('recipeTitleEl').textContent = 'Manual entry';
+    document.getElementById('recipeMetaEl').textContent = 'Add ingredients below';
+  }
+  btn.disabled = false; btn.textContent = 'Analyze →';
+}
+
+function setStatus(msg, isError) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = 'status' + (isError ? ' error' : '');
+}
+</script>
+</body>
+</html>
