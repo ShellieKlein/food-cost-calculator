@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mise en Place — Meal Cost Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --cream: #f7f3ee; --parchment: #ede8df; --warm-white: #faf8f5;
+      --ink: #1c1a17; --ink-light: #4a4540; --ink-faint: #9a9188;
+      --copper: #b5622a; --copper-light: #e8c4a4; --copper-pale: #f5e8da;
+      --sage: #5a7a5c; --sage-pale: #e4ede4;
+      --border: rgba(28,26,23,0.12); --border-strong: rgba(28,26,23,0.22);
+      --shadow: 0 2px 20px rgba(28,26,23,0.07); --shadow-lg: 0 8px 40px rgba(28,26,23,0.13);
+    }
+    body { font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); min-height: 100vh; }
+    .header { background: var(--ink); color: var(--cream); padding: 2rem 2rem 1.75rem; text-align: center; position: relative; }
+    .header::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--copper), #d4882e, var(--copper)); }
+    .header-eyebrow { font-size: 11px; font-weight: 500; letter-spacing: 0.2em; text-transform: uppercase; color: var(--copper-light); margin-bottom: 8px; }
+    .header h1 { font-family: 'Playfair Display', serif; font-size: clamp(24px, 4vw, 36px); font-weight: 400; margin-bottom: 6px; }
+    .header h1 em { font-style: italic; color: var(--copper-light); }
+    .header p { font-size: 13px; color: rgba(247,243,238,0.5); font-weight: 300; }
+    .main { max-width: 820px; margin: 0 auto; padding: 1.75rem 1.25rem 4rem; }
+    .section-divider { display: flex; align-items: center; gap: 12px; margin: 1.75rem 0 1rem; }
+    .section-divider span { font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
+    .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 0.5px; background: var(--border); }
+    .card { background: var(--warm-white); border: 0.5px solid var(--border); border-radius: 16px; padding: 1.25rem 1.5rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
+    .setup-card { background: var(--ink); color: var(--cream); border-color: transparent; }
+    .setup-card label { color: rgba(247,243,238,0.55) !important; }
+    .setup-card input, .setup-card select { background: rgba(255,255,255,0.09); border-color: rgba(255,255,255,0.16); color: var(--cream); }
+    .setup-card input::placeholder { color: rgba(247,243,238,0.3); }
+    .setup-card input:focus, .setup-card select:focus { border-color: var(--copper-light); }
+    .card-title { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 400; color: var(--ink); margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; font-weight: 500; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-faint); }
+    input, select { font-family: 'DM Sans', sans-serif; font-size: 14px; border-radius: 8px; border: 0.5px solid var(--border-strong); background: var(--warm-white); color: var(--ink); padding: 0 12px; height: 38px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    input:focus, select:focus { border-color: var(--copper); box-shadow: 0 0 0 3px var(--copper-pale); }
+    input::placeholder { color: var(--ink-faint); }
+    .btn { font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; border-radius: 8px; border: 0.5px solid var(--border-strong); padding: 0 16px; height: 38px; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .btn-primary { background: var(--copper); color: white; border-color: var(--copper); }
+    .btn-primary:hover { background: #9e5525; box-shadow: 0 4px 12px rgba(181,98,42,0.3); }
+    .btn-secondary { background: var(--warm-white); color: var(--ink); }
+    .btn-secondary:hover { background: var(--parchment); }
+    .btn-danger { background: none; color: #c0392b; border-color: #f0c0c0; }
+    .btn-danger:hover { background: #fde8e8; }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-sm { height: 30px; font-size: 12px; padding: 0 12px; }
+
+    /* Meal summary */
+    .meal-summary { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 1rem; }
+    @media (max-width: 600px) { .meal-summary { grid-template-columns: 1fr 1fr; } }
+    .metric { background: var(--parchment); border-radius: 12px; padding: 14px 16px; border: 0.5px solid var(--border); }
+    .metric-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 5px; }
+    .metric-value { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 600; line-height: 1; }
+    .metric.accent { background: var(--copper-pale); border-color: var(--copper-light); }
+    .metric.accent .metric-value { color: var(--copper); }
+    .metric.positive .metric-value { color: var(--sage); }
+
+    /* Recipe cards */
+    .recipe-card { background: var(--warm-white); border: 0.5px solid var(--border); border-radius: 14px; margin-bottom: 12px; box-shadow: var(--shadow); overflow: hidden; }
+    .recipe-card-header { display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; border-bottom: 0.5px solid transparent; transition: background 0.15s; }
+    .recipe-card-header:hover { background: var(--parchment); }
+    .recipe-card-header.open { border-bottom-color: var(--border); }
+    .recipe-card-number { width: 28px; height: 28px; background: var(--copper-pale); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: var(--copper); flex-shrink: 0; }
+    .recipe-card-name { flex: 1; font-weight: 500; font-size: 14px; }
+    .recipe-card-name.placeholder { color: var(--ink-faint); font-weight: 400; font-style: italic; }
+    .recipe-card-cost { font-family: 'Playfair Display', serif; font-size: 15px; font-weight: 600; color: var(--copper); margin-right: 8px; }
+    .recipe-card-meta { font-size: 12px; color: var(--ink-faint); margin-right: 8px; }
+    .chevron { font-size: 12px; color: var(--ink-faint); transition: transform 0.2s; }
+    .chevron.open { transform: rotate(180deg); }
+    .recipe-card-body { display: none; padding: 16px; }
+    .recipe-card-body.open { display: block; }
+
+    /* URL row */
+    .url-row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 10px; }
+    .url-row .field { flex: 1; min-width: 180px; }
+    .status { font-size: 12px; color: var(--ink-faint); margin-bottom: 10px; min-height: 16px; }
+    .status.error { color: #c0392b; }
+    .status.success { color: var(--sage); }
+
+    /* Ingredients table */
+    .ing-table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead tr { border-bottom: 1px solid var(--border-strong); }
+    th { text-align: left; font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); padding: 0 8px 8px 0; }
+    th:last-child { text-align: right; padding-right: 0; }
+    td { padding: 8px 8px 8px 0; border-bottom: 0.5px solid var(--border); vertical-align: middle; }
+    td:last-child { text-align: right; padding-right: 0; font-weight: 500; }
+    tr:last-child td { border-bottom: none; }
+    td input[type="number"] { width: 62px; height: 28px; font-size: 12px; text-align: center; padding: 0 4px; }
+    td select { height: 28px; font-size: 12px; padding: 0 6px; width: 80px; }
+    .del-btn { background: none; border: none; cursor: pointer; color: var(--ink-faint); padding: 3px 5px; border-radius: 4px; font-size: 12px; height: auto; }
+    .del-btn:hover { background: #fde8e8; color: #c0392b; }
+
+    /* Add ingredient row */
+    .add-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 0.5px dashed var(--border-strong); }
+    .add-row input[type="text"] { height: 30px; font-size: 12px; }
+    .add-row input[type="text"]:first-child { width: 130px; }
+    .add-row input[type="number"] { width: 58px; height: 30px; font-size: 12px; }
+    .add-row select { width: 80px; height: 30px; font-size: 12px; }
+
+    /* Settings row inside recipe */
+    .recipe-settings { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 12px; }
+    .recipe-settings .field input { width: 75px; }
+    .recipe-settings .field label { font-size: 10px; }
+
+    /* Recipe subtotal */
+    .recipe-subtotal { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+    .sub-metric { background: var(--parchment); border-radius: 8px; padding: 10px 12px; }
+    .sub-metric-label { font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); margin-bottom: 3px; }
+    .sub-metric-value { font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 600; }
+    .sub-metric.accent { background: var(--copper-pale); }
+    .sub-metric.accent .sub-metric-value { color: var(--copper); }
+
+    /* Units manager */
+    .units-manager { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border); }
+    .unit-tag { display: inline-flex; align-items: center; gap: 3px; background: var(--parchment); border: 0.5px solid var(--border-strong); border-radius: 20px; padding: 2px 10px 2px 10px; font-size: 11px; font-weight: 500; color: var(--ink-light); }
+    .unit-tag button { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 11px; padding: 0 0 0 3px; height: auto; line-height: 1; }
+    .unit-tag button:hover { color: #c0392b; }
+
+    /* Add recipe button */
+    .add-recipe-btn { width: 100%; border: 1.5px dashed var(--border-strong); background: transparent; border-radius: 14px; padding: 16px; font-size: 14px; color: var(--ink-faint); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 8px; font-family: 'DM Sans', sans-serif; }
+    .add-recipe-btn:hover { border-color: var(--copper); color: var(--copper); background: var(--copper-pale); }
+
+    /* Profit section */
+    .profit-toggle-label { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+    .profit-toggle-label input { width: 16px; height: 16px; padding: 0; cursor: pointer; accent-color: var(--copper); }
+    .profit-section { margin-top: 1rem; padding-top: 1rem; border-top: 0.5px solid var(--border); }
+    .profit-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .profit-row .field input { width: 110px; }
+    .tag { display: inline-block; font-size: 10px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; border-radius: 20px; margin-left: 6px; }
+    .tag.great { background: var(--sage-pale); color: var(--sage); }
+    .tag.ok { background: #fef3e2; color: #b36b00; }
+    .tag.low { background: #fde8e8; color: #c0392b; }
+
+    /* Debug */
+    .debug-panel { background: #1a1a1a; color: #00ff88; font-family: monospace; font-size: 11px; border-radius: 8px; padding: 12px; margin-top: 8px; max-height: 180px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; border: 1px solid #333; display: none; }
+    .debug-panel.visible { display: block; }
+    .debug-toggle { font-size: 11px; color: var(--ink-faint); cursor: pointer; text-decoration: underline; display: inline-block; margin-top: 4px; }
+    .api-link { color: var(--copper-light); font-size: 12px; text-decoration: none; }
+    .api-link:hover { text-decoration: underline; }
+
+    .dot-loader { display: inline-flex; gap: 3px; }
+    .dot-loader span { width: 4px; height: 4px; background: currentColor; border-radius: 50%; animation: bounce 1s infinite; }
+    .dot-loader span:nth-child(2) { animation-delay: 0.15s; }
+    .dot-loader span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+    .fade-up { animation: fadeUp 0.3s ease both; }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-eyebrow">Professional Kitchen Tool</div>
+  <h1>Mise en <em>Place</em></h1>
+  <p>Meal cost calculator · multiple recipes · per-dish & total breakdown</p>
+</header>
+
+<div id="httpWarning" style="display:none;background:#7c2d12;color:#fef3c7;padding:10px 20px;text-align:center;font-size:13px;">
+  ⚠️ You are running over <strong>http://</strong> — the API key will be blocked by your browser. 
+  Open the file directly (<strong>file://</strong>) or deploy to GitHub Pages (<strong>https://</strong>).
+</div>
+<main class="main">
+
+  <!-- Setup -->
+  <div class="section-divider"><span>Setup</span></div>
+  <div class="card setup-card">
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div class="field" style="flex:1;min-width:180px;">
+        <label>Anthropic API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-..." style="width:100%;"
+          onpaste="setTimeout(()=>{ this.value=sanitizeKey(this.value); },10)" />
+      </div>
+      <div class="field">
+        <label>Country</label>
+        <select id="countrySel" onchange="updateMealSummary()" style="width:155px;">
+          <option value="IL">🇮🇱 Israel (₪)</option>
+          <option value="US">🇺🇸 USA ($)</option>
+          <option value="UK">🇬🇧 UK (£)</option>
+          <option value="DE">🇩🇪 Germany (€)</option>
+          <option value="FR">🇫🇷 France (€)</option>
+          <option value="AU">🇦🇺 Australia (A$)</option>
+          <option value="CA">🇨🇦 Canada (C$)</option>
+          <option value="JP">🇯🇵 Japan (¥)</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>+ Add Country</label>
+        <div style="display:flex;gap:5px;">
+          <input type="text" id="newCountryName" placeholder="e.g. Brazil" style="width:85px;height:38px;font-size:12px;" />
+          <input type="text" id="newCountryCurrency" placeholder="R$" style="width:38px;height:38px;font-size:12px;" />
+          <button class="btn btn-secondary" onclick="addCountry()" style="height:38px;font-size:12px;padding:0 10px;">Add</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>Meal overhead %</label>
+        <input type="number" id="mealOverhead" value="15" min="0" max="300" style="width:75px;" onchange="updateMealSummary()" oninput="updateMealSummary()" />
+      </div>
+    </div>
+    <div style="margin-top:10px;"><a class="api-link" href="https://console.anthropic.com/settings/keys" target="_blank">↗ Get a free Anthropic API key</a></div>
+  </div>
+
+  <!-- Meal summary -->
+  <div class="section-divider"><span>Meal Summary</span></div>
+  <div class="meal-summary">
+    <div class="metric"><div class="metric-label">Recipes</div><div class="metric-value" id="sumRecipes">0</div></div>
+    <div class="metric"><div class="metric-label">Total Ingredient Cost</div><div class="metric-value" id="sumIngCost">—</div></div>
+    <div class="metric accent"><div class="metric-label">With Overhead</div><div class="metric-value" id="sumWithOverhead">—</div></div>
+    <div class="metric accent"><div class="metric-label">Cost / Guest</div><div class="metric-value" id="sumPerGuest">—</div></div>
+  </div>
+
+  <!-- Profit for whole meal -->
+  <div class="card" id="mealProfitCard">
+    <label class="profit-toggle-label">
+      <input type="checkbox" id="mealSellingToggle" onchange="toggleMealProfit()" />
+      Selling this meal — calculate total profit
+    </label>
+    <div id="mealProfitSection" style="display:none;" class="profit-section">
+      <div class="profit-row">
+        <div class="field"><label>Price per guest</label><input type="number" id="mealSellPrice" value="0" min="0" step="any" onchange="updateMealSummary()" oninput="updateMealSummary()" /></div>
+        <div class="field"><label>Number of guests</label><input type="number" id="mealGuests" value="4" min="1" step="1" onchange="updateMealSummary()" oninput="updateMealSummary()" /></div>
+        <div class="field"><label>Labour cost</label><input type="number" id="mealLabour" value="0" min="0" step="any" onchange="updateMealSummary()" oninput="updateMealSummary()" /></div>
+      </div>
+      <div class="meal-summary" style="margin-bottom:0;">
+        <div class="metric"><div class="metric-label">Revenue</div><div class="metric-value" id="mealRevenue">—</div></div>
+        <div class="metric"><div class="metric-label">Total Cost</div><div class="metric-value" id="mealTotalCost">—</div></div>
+        <div class="metric accent positive"><div class="metric-label">Gross Profit <span id="mealMarginTag" class="tag"></span></div><div class="metric-value" id="mealProfit">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recipes -->
+  <div class="section-divider"><span>Recipes in this Meal</span></div>
+  <div id="recipeList"></div>
+  <button class="add-recipe-btn" onclick="addRecipe()">＋ Add another recipe</button>
+
+</main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let CURRENCY = { IL:'₪', US:'$', UK:'£', DE:'€', FR:'€', AU:'A$', CA:'C$', JP:'¥' };
+let units = ['grams', 'kg', 'ml', 'liters', 'cups', 'oz', 'lb', 'tsp', 'tbsp', 'unit'];
+let recipes = []; // [{ id, title, servings, ingredients:[], collapsed }]
+let nextId = 1;
+let debugLines = [];
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function getCountry() { return document.getElementById('countrySel').value; }
+function getCurrencySymbol() { return CURRENCY[getCountry()] || '$'; }
+function fmt(n) { return getCurrencySymbol() + parseFloat(n).toFixed(2); }
+
+function dbg(rid, msg) {
+  const ts = new Date().toISOString().slice(11,19);
+  const line = `[${ts}] ${msg}`;
+  debugLines.push(line);
+  const panel = document.getElementById('debug-' + rid);
+  if (panel) { panel.textContent = debugLines.filter(l => l).join('\n'); panel.scrollTop = panel.scrollHeight; }
+  console.log('[DBG]', msg);
+}
+
+function sanitizeKey(k) {
+  return (k || '').split('').filter(c => c.charCodeAt(0) > 32 && c.charCodeAt(0) < 127).join('');
+}
+
+function updateKeyStatus() {
+  const key = sanitizeKey(document.getElementById('apiKey').value);
+  const el = document.getElementById('keyStatus');
+  if (!key) { el.textContent = ''; return; }
+  if (!key.startsWith('sk-')) {
+    el.style.color = '#fca5a5';
+    el.textContent = '⚠ Key should start with sk-ant-...';
+  } else {
+    el.style.color = 'rgba(247,243,238,0.5)';
+    el.textContent = 'Key: ' + key.slice(0,14) + '... (' + key.length + ' chars)';
+  }
+}
+
+async function testApiKey() {
+  const key = sanitizeKey(document.getElementById('apiKey').value);
+  const el = document.getElementById('keyStatus');
+  if (!key) {
+    alert('Please paste your API key first.');
+    return;
+  }
+  el.style.color = '#fbbf24';
+  el.textContent = 'Testing key: ' + key.slice(0,14) + '... (' + key.length + ' chars)';
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Hi' }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) {
+      el.style.color = '#fca5a5';
+      el.textContent = '✗ ' + data.error.message;
+      alert('Key test FAILED: ' + data.error.message + '\nKey prefix: ' + key.slice(0,14) + '\nLength: ' + key.length);
+    } else {
+      el.style.color = '#86efac';
+      el.textContent = '✓ Key is valid and working!';
+      alert('✓ API key is valid and working!');
+    }
+  } catch(e) {
+    el.style.color = '#fca5a5';
+    el.textContent = '✗ Network error: ' + e.message;
+    alert('Network error: ' + e.message);
+  }
+}
+
+function addCountry() {
+  const name = document.getElementById('newCountryName').value.trim();
+  const symbol = document.getElementById('newCountryCurrency').value.trim();
+  if (!name || !symbol) return;
+  const code = name.toUpperCase().replace(/[^A-Z]/g,'').slice(0,4) || 'CUST';
+  CURRENCY[code] = symbol;
+  const sel = document.getElementById('countrySel');
+  const existing = sel.querySelector(`option[value="${code}"]`);
+  if (existing) existing.remove();
+  const opt = document.createElement('option');
+  opt.value = code; opt.textContent = `${name} (${symbol})`;
+  sel.appendChild(opt);
+  sel.value = code;
+  document.getElementById('newCountryName').value = '';
+  document.getElementById('newCountryCurrency').value = '';
+  updateMealSummary();
+}
+
+// ── Meal Summary ──────────────────────────────────────────────────────────────
+function updateMealSummary() {
+  const overhead = parseFloat(document.getElementById('mealOverhead').value) || 0;
+  const totalIng = recipes.reduce((s, r) => s + recipeIngTotal(r), 0);
+  const withOverhead = totalIng * (1 + overhead / 100);
+  const guests = parseInt(document.getElementById('mealGuests')?.value) || 1;
+  const perGuest = withOverhead / Math.max(1, guests);
+
+  document.getElementById('sumRecipes').textContent = recipes.length;
+  document.getElementById('sumIngCost').textContent = recipes.length ? fmt(totalIng) : '—';
+  document.getElementById('sumWithOverhead').textContent = recipes.length ? fmt(withOverhead) : '—';
+  document.getElementById('sumPerGuest').textContent = recipes.length ? fmt(perGuest) : '—';
+
+  if (document.getElementById('mealSellingToggle').checked) {
+    const sellPrice = parseFloat(document.getElementById('mealSellPrice').value) || 0;
+    const labour = parseFloat(document.getElementById('mealLabour').value) || 0;
+    const revenue = sellPrice * guests;
+    const totalCost = withOverhead + labour;
+    const profit = revenue - totalCost;
+    const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
+    document.getElementById('mealRevenue').textContent = fmt(revenue);
+    document.getElementById('mealTotalCost').textContent = fmt(totalCost);
+    document.getElementById('mealProfit').textContent = fmt(profit) + ' (' + margin.toFixed(1) + '%)';
+    const tag = document.getElementById('mealMarginTag');
+    if (margin >= 60) { tag.textContent = 'Great'; tag.className = 'tag great'; }
+    else if (margin >= 30) { tag.textContent = 'OK'; tag.className = 'tag ok'; }
+    else { tag.textContent = 'Low'; tag.className = 'tag low'; }
+  }
+
+  // Re-render each recipe's subtotals
+  recipes.forEach(r => renderRecipeSubtotals(r));
+}
+
+function toggleMealProfit() {
+  document.getElementById('mealProfitSection').style.display =
+    document.getElementById('mealSellingToggle').checked ? 'block' : 'none';
+  updateMealSummary();
+}
+
+function recipeIngTotal(r) {
+  return (r.ingredients || []).reduce((s, i) => s + (parseFloat(i.price)||0) * (parseFloat(i.qty)||1), 0);
+}
+
+// ── Recipe Management ─────────────────────────────────────────────────────────
+function addRecipe(data) {
+  const id = nextId++;
+  const recipe = data || { id, title: '', servings: 4, ingredients: [], collapsed: false };
+  recipe.id = id;
+  recipes.push(recipe);
+  renderRecipeList();
+  updateMealSummary();
+  // Auto-scroll to new recipe
+  setTimeout(() => {
+    const el = document.getElementById('recipe-' + id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 100);
+}
+
+function removeRecipe(id) {
+  recipes = recipes.filter(r => r.id !== id);
+  renderRecipeList();
+  updateMealSummary();
+}
+
+function toggleRecipeCollapse(id) {
+  const r = recipes.find(r => r.id === id);
+  if (r) r.collapsed = !r.collapsed;
+  renderRecipeList();
+}
+
+function renderRecipeList() {
+  const container = document.getElementById('recipeList');
+  container.innerHTML = '';
+  recipes.forEach((r, idx) => {
+    const el = document.createElement('div');
+    el.className = 'recipe-card fade-up';
+    el.id = 'recipe-' + r.id;
+    el.innerHTML = recipeCardHTML(r, idx);
+    container.appendChild(el);
+  });
+}
+
+function recipeCardHTML(r, idx) {
+  const total = recipeIngTotal(r);
+  const overhead = parseFloat(document.getElementById('mealOverhead').value) || 0;
+  const withOH = total * (1 + overhead / 100);
+  const perServing = withOH / Math.max(1, r.servings || 4);
+  const hasData = r.ingredients && r.ingredients.length > 0;
+
+  return `
+    <div class="recipe-card-header ${r.collapsed ? '' : 'open'}" onclick="toggleRecipeCollapse(${r.id})">
+      <div class="recipe-card-number">${idx + 1}</div>
+      <div class="recipe-card-name ${r.title ? '' : 'placeholder'}">${r.title || 'Untitled recipe'}</div>
+      ${hasData ? `<span class="recipe-card-meta">${r.ingredients.length} ingredients · ${r.servings} servings</span>` : ''}
+      ${hasData ? `<span class="recipe-card-cost">${fmt(withOH)}</span>` : ''}
+      <span class="chevron ${r.collapsed ? '' : 'open'}">▼</span>
+    </div>
+    <div class="recipe-card-body ${r.collapsed ? '' : 'open'}">
+
+      <!-- URL input -->
+      <div class="url-row">
+        <div class="field">
+          <label>Recipe URL</label>
+          <input type="text" id="url-${r.id}" placeholder="https://..." value="${r.url || ''}" style="min-width:200px;" />
+        </div>
+        <button class="btn btn-primary btn-sm" id="parse-btn-${r.id}" onclick="parseRecipe(${r.id})" style="margin-top:20px;">Analyze →</button>
+        <button class="btn btn-danger btn-sm" onclick="removeRecipe(${r.id})" style="margin-top:20px;">Remove</button>
+      </div>
+      <div class="status" id="status-${r.id}"></div>
+      <span class="debug-toggle" onclick="document.getElementById('debug-${r.id}').classList.toggle('visible')">🔍 Debug log</span>
+      <div class="debug-panel" id="debug-${r.id}"></div>
+
+      <!-- Recipe name override -->
+      <div style="margin-top:12px;" class="field">
+        <label>Recipe name</label>
+        <input type="text" id="title-${r.id}" value="${r.title || ''}" placeholder="e.g. Roasted Chicken" style="max-width:300px;"
+          oninput="recipes.find(x=>x.id==${r.id}).title=this.value; document.querySelector('#recipe-${r.id} .recipe-card-name').textContent=this.value||'Untitled recipe'; updateMealSummary();" />
+      </div>
+
+      <!-- Settings -->
+      <div class="recipe-settings" style="margin-top:12px;">
+        <div class="field">
+          <label>Servings</label>
+          <input type="number" value="${r.servings || 4}" min="1" max="200"
+            onchange="recipes.find(x=>x.id==${r.id}).servings=parseInt(this.value)||1; updateMealSummary();"
+            oninput="recipes.find(x=>x.id==${r.id}).servings=parseInt(this.value)||1; updateMealSummary();" />
+        </div>
+      </div>
+
+      <!-- Subtotals -->
+      <div class="recipe-subtotal" id="subtotal-${r.id}">
+        <div class="sub-metric"><div class="sub-metric-label">Ingredient cost</div><div class="sub-metric-value">${hasData ? fmt(total) : '—'}</div></div>
+        <div class="sub-metric accent"><div class="sub-metric-label">With overhead</div><div class="sub-metric-value">${hasData ? fmt(withOH) : '—'}</div></div>
+        <div class="sub-metric accent"><div class="sub-metric-label">Per serving</div><div class="sub-metric-value">${hasData ? fmt(perServing) : '—'}</div></div>
+      </div>
+
+      <!-- Ingredients table -->
+      <div class="ing-table-wrap">
+        <table>
+          <thead><tr>
+            <th>Ingredient</th><th>Qty</th><th>Unit</th>
+            <th style="text-align:right;">Unit price</th>
+            <th style="text-align:right;">Cost</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="ing-table-${r.id}">${renderIngRows(r)}</tbody>
+        </table>
+      </div>
+
+      <!-- Add ingredient row -->
+      <div class="add-row">
+        <input type="text" id="new-name-${r.id}" placeholder="Ingredient" />
+        <input type="number" id="new-qty-${r.id}" placeholder="Qty" min="0" step="any" style="width:58px;" />
+        <select id="new-unit-${r.id}">${units.map(u=>`<option>${u}</option>`).join('')}</select>
+        <input type="number" id="new-price-${r.id}" placeholder="Price" min="0" step="any" style="width:65px;" />
+        <button class="btn btn-secondary btn-sm" onclick="addIngredient(${r.id})">+ Add</button>
+      </div>
+
+      <!-- Units manager -->
+      <div class="units-manager">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;flex-wrap:wrap;gap:6px;">
+          <span style="font-size:10px;font-weight:500;letter-spacing:0.1em;text-transform:uppercase;color:var(--ink-faint);">Units</span>
+          <div style="display:flex;gap:5px;">
+            <input type="text" id="new-unit-input-${r.id}" placeholder="e.g. pinch" style="width:80px;height:26px;font-size:11px;padding:0 6px;" />
+            <button class="btn btn-secondary" onclick="addUnit('${r.id}')" style="height:26px;font-size:11px;padding:0 8px;">+ Add unit</button>
+          </div>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;" id="unit-tags-${r.id}">${renderUnitTags(r.id)}</div>
+      </div>
+
+    </div>`;
+}
+
+function renderIngRows(r) {
+  if (!r.ingredients || !r.ingredients.length) return `<tr><td colspan="6" style="text-align:center;padding:1.5rem;color:var(--ink-faint);font-size:12px;">No ingredients yet — paste a URL above or add manually</td></tr>`;
+  return r.ingredients.map((ing, i) => {
+    const cost = (parseFloat(ing.price)||0) * (parseFloat(ing.qty)||1);
+    const unitOpts = units.includes(ing.unit) ? units : [ing.unit, ...units];
+    return `<tr>
+      <td style="font-weight:500;">${ing.name}</td>
+      <td><input type="number" value="${parseFloat(ing.qty).toFixed(2)}" min="0" step="any"
+        onchange="updateIng(${r.id},${i},'qty',this.value)" /></td>
+      <td><select onchange="updateIng(${r.id},${i},'unit',this.value)">
+        ${unitOpts.map(u=>`<option ${u===ing.unit?'selected':''}>${u}</option>`).join('')}
+      </select></td>
+      <td style="text-align:right;"><input type="number" value="${parseFloat(ing.price).toFixed(2)}" min="0" step="any"
+        style="text-align:right;" onchange="updateIng(${r.id},${i},'price',this.value)" /></td>
+      <td><span style="font-family:'Playfair Display',serif;font-size:14px;">${fmt(cost)}</span></td>
+      <td><button class="del-btn" onclick="deleteIng(${r.id},${i})">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRecipeSubtotals(r) {
+  const el = document.getElementById('subtotal-' + r.id);
+  if (!el) return;
+  const total = recipeIngTotal(r);
+  const overhead = parseFloat(document.getElementById('mealOverhead').value) || 0;
+  const withOH = total * (1 + overhead / 100);
+  const perServing = withOH / Math.max(1, r.servings || 4);
+  const hasData = r.ingredients && r.ingredients.length > 0;
+  el.innerHTML = `
+    <div class="sub-metric"><div class="sub-metric-label">Ingredient cost</div><div class="sub-metric-value">${hasData ? fmt(total) : '—'}</div></div>
+    <div class="sub-metric accent"><div class="sub-metric-label">With overhead</div><div class="sub-metric-value">${hasData ? fmt(withOH) : '—'}</div></div>
+    <div class="sub-metric accent"><div class="sub-metric-label">Per serving</div><div class="sub-metric-value">${hasData ? fmt(perServing) : '—'}</div></div>`;
+}
+
+function updateIng(rid, idx, field, val) {
+  const r = recipes.find(r => r.id === rid);
+  if (!r) return;
+  r.ingredients[idx][field] = val;
+  // Re-render just this table and subtotals
+  document.getElementById('ing-table-' + rid).innerHTML = renderIngRows(r);
+  updateMealSummary();
+}
+
+function deleteIng(rid, idx) {
+  const r = recipes.find(r => r.id === rid);
+  if (!r) return;
+  r.ingredients.splice(idx, 1);
+  document.getElementById('ing-table-' + rid).innerHTML = renderIngRows(r);
+  updateMealSummary();
+}
+
+function addIngredient(rid) {
+  const r = recipes.find(r => r.id === rid);
+  if (!r) return;
+  const name = document.getElementById('new-name-' + rid).value.trim();
+  if (!name) return;
+  r.ingredients.push({
+    name,
+    qty: parseFloat(document.getElementById('new-qty-' + rid).value) || 1,
+    unit: document.getElementById('new-unit-' + rid).value || units[0],
+    price: parseFloat(document.getElementById('new-price-' + rid).value) || 0
+  });
+  document.getElementById('new-name-' + rid).value = '';
+  document.getElementById('new-qty-' + rid).value = '';
+  document.getElementById('new-price-' + rid).value = '';
+  document.getElementById('ing-table-' + rid).innerHTML = renderIngRows(r);
+  updateMealSummary();
+}
+
+// ── Units ─────────────────────────────────────────────────────────────────────
+function renderUnitTags(rid) {
+  return units.map((u, i) => `
+    <span class="unit-tag">${u}
+      ${units.length > 1 ? `<button onclick="removeUnit(${i},'${rid}')">✕</button>` : ''}
+    </span>`).join('');
+}
+
+function addUnit(rid) {
+  const input = document.getElementById('new-unit-input-' + rid);
+  const val = input.value.trim().toLowerCase();
+  if (!val || units.includes(val)) { input.value = ''; return; }
+  units.push(val);
+  input.value = '';
+  renderRecipeList(); // re-render all so all unit selects update
+}
+
+function removeUnit(idx, rid) {
+  units.splice(idx, 1);
+  renderRecipeList();
+}
+
+// ── Parsing ───────────────────────────────────────────────────────────────────
+async function apiCall(apiKey, body) {
+  const cleanKey = sanitizeKey(apiKey);
+  if (!cleanKey.startsWith('sk-')) throw new Error('API key looks invalid — should start with sk-ant-...');
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': cleanKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await res.json();
+  if (data.error) throw new Error('API error: ' + JSON.stringify(data.error));
+  return data;
+}
+
+function setStatus(rid, msg, type) {
+  const el = document.getElementById('status-' + rid);
+  if (!el) return;
+  el.textContent = msg;
+  el.className = 'status' + (type ? ' ' + type : '');
+}
+
+async function parseRecipe(rid) {
+  const r = recipes.find(r => r.id === rid);
+  if (!r) return;
+  const url = document.getElementById('url-' + rid).value.trim();
+  const apiKey = sanitizeKey(document.getElementById('apiKey').value);
+
+  if (!url || (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    setStatus(rid, 'Please enter a valid URL starting with https://', 'error'); return;
+  }
+  if (!apiKey) { setStatus(rid, 'Please enter your Anthropic API key first.', 'error'); return; }
+
+  r.url = url;
+  debugLines = [];
+  const countryName = document.getElementById('countrySel').options[document.getElementById('countrySel').selectedIndex].text;
+  const btn = document.getElementById('parse-btn-' + rid);
+  btn.disabled = true;
+  btn.innerHTML = '<span class="dot-loader"><span></span><span></span><span></span></span>';
+
+  try {
+    // Step 1: fetch via proxy
+    setStatus(rid, 'Step 1/3 — Fetching page...');
+    dbg(rid, 'Fetching: ' + url);
+    let pageText = '';
+
+    const proxies = [
+      `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+      `https://corsproxy.io/?${encodeURIComponent(url)}`
+    ];
+    for (const proxyUrl of proxies) {
+      if (pageText.length > 500) break;
+      try {
+        dbg(rid, 'Proxy: ' + proxyUrl.slice(0,60));
+        const res = await fetch(proxyUrl);
+        let raw = proxyUrl.includes('allorigins') ? (await res.json()).contents || '' : await res.text();
+        dbg(rid, 'Raw len: ' + raw.length);
+        const cleaned = raw
+          .replace(/<script[\s\S]*?<\/script>/gi, '')
+          .replace(/<style[\s\S]*?<\/style>/gi, '')
+          .replace(/<[^>]+>/g, ' ')
+          .replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>')
+          .replace(/\s{2,}/g, ' ').trim().slice(0, 15000);
+        dbg(rid, 'Cleaned: ' + cleaned.length + ' | מרכיבים:' + cleaned.includes('מרכיבים') + ' | Ingredients:' + /ingredients/i.test(cleaned));
+        if (cleaned.length > 200) pageText = cleaned;
+      } catch(e) { dbg(rid, 'Proxy err: ' + e.message); }
+    }
+
+    // Step 2: extract ingredients
+    setStatus(rid, 'Step 2/3 — Extracting ingredients...');
+    let extractText = '';
+
+    if (pageText.length > 500) {
+      dbg(rid, 'Sending page text to Claude...');
+      const data = await apiCall(apiKey, {
+        model: 'claude-sonnet-4-20250514', max_tokens: 2000,
+        messages: [{ role: 'user', content:
+          `Extract the ingredients from this recipe page text. Find the section labeled "Ingredients", "מרכיבים", or similar.\n\nPage text:\n${pageText}\n\nRespond ONLY with valid JSON, no markdown:\n{"title":"recipe name","servings":4,"raw_ingredients":["1 cup flour","2 eggs"]}`
+        }]
+      });
+      extractText = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    } else {
+      dbg(rid, 'No page text — using web_search...');
+      const urlSlug = url.split('/').filter(Boolean).pop().replace(/[-_]/g,' ').replace(/\.html?$/i,'').trim();
+      let messages = [{ role: 'user', content:
+        `Search for this recipe and find its ingredients list.\nURL: ${url}\nRecipe hint: "${urlSlug}"\n\nFind ingredients section (labeled "Ingredients" or "מרכיבים") and extract everything.\n\nRespond ONLY with valid JSON:\n{"title":"recipe name","servings":4,"raw_ingredients":["1 cup flour","2 eggs"]}`
+      }];
+      for (let turn = 0; turn < 10; turn++) {
+        dbg(rid, 'Search turn ' + (turn+1));
+        const data = await apiCall(apiKey, {
+          model: 'claude-sonnet-4-20250514', max_tokens: 2000,
+          tools: [{ type: 'web_search_20250305', name: 'web_search' }], messages
+        });
+        const txt = (data.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+        if (data.stop_reason === 'end_turn') { extractText = txt; dbg(rid, 'Done: ' + txt.slice(0,100)); break; }
+        if (data.stop_reason === 'tool_use') {
+          messages.push({ role: 'assistant', content: data.content });
+          const results = (data.content||[]).filter(b=>b.type==='tool_use').map(b => {
+            dbg(rid, 'tool_use: ' + JSON.stringify(b.input).slice(0,100));
+            return { type: 'tool_result', tool_use_id: b.id, content: 'Search executed.' };
+          });
+          messages.push({ role: 'user', content: results });
+        } else { extractText = txt; break; }
+      }
+    }
+
+    dbg(rid, 'Extract response: ' + extractText.slice(0,300));
+    const jsonMatch = extractText.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON returned. Got: ' + extractText.slice(0,300));
+    const extracted = JSON.parse(jsonMatch[0]);
+    const rawIngredients = extracted.raw_ingredients || [];
+    if (!rawIngredients.length) throw new Error('No ingredients found.');
+    dbg(rid, 'Got ' + rawIngredients.length + ' ingredients');
+
+    // Step 3: price
+    setStatus(rid, `Step 3/3 — Pricing ${rawIngredients.length} ingredients...`);
+    const priceData = await apiCall(apiKey, {
+      model: 'claude-sonnet-4-20250514', max_tokens: 2000,
+      messages: [{ role: 'user', content:
+        `Pricing expert for ${countryName}. Estimate retail supermarket prices per unit.\nIsrael ref: egg=1.2₪, chicken=40₪/kg, milk=7₪/L, flour=5₪/kg, tomatoes=8₪/kg, olive oil=35₪/L, onion=3₪, butter=5₪/100g, sugar=5₪/kg.\nprice=cost per ONE unit, qty=amount used.\n\nIngredients:\n${rawIngredients.map((r,i)=>`${i+1}. ${r}`).join('\n')}\n\nRespond ONLY with valid JSON:\n{"ingredients":[{"name":"flour","qty":2,"unit":"cups","price":1.5}]}`
+      }]
+    });
+    let priceText = (priceData.content||[]).filter(b=>b.type==='text').map(b=>b.text).join('');
+    dbg(rid, 'Price response: ' + priceText.slice(0,200));
+    const priceMatch = priceText.match(/\{[\s\S]*\}/);
+    if (!priceMatch) throw new Error('No pricing JSON. Got: ' + priceText.slice(0,200));
+    const priced = JSON.parse(priceMatch[0]);
+
+    r.ingredients = priced.ingredients || [];
+    r.title = extracted.title || r.title || 'Recipe ' + rid;
+    r.servings = extracted.servings || 4;
+    dbg(rid, 'Done! ' + r.ingredients.length + ' priced ingredients');
+
+    renderRecipeList();
+    updateMealSummary();
+    setStatus(rid, `✓ ${r.ingredients.length} ingredients loaded. Adjust prices as needed.`, 'success');
+
+  } catch(e) {
+    dbg(rid, 'ERROR: ' + e.message);
+    setStatus(rid, 'Error: ' + e.message, 'error');
+  }
+
+  const btn2 = document.getElementById('parse-btn-' + rid);
+  if (btn2) { btn2.disabled = false; btn2.textContent = 'Analyze →'; }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Warn if running over plain http (blocks API calls)
+  if (location.protocol === 'http:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    document.getElementById('httpWarning').style.display = 'block';
+  }
+  // Auto-trim API key on paste
+  const keyInput = document.getElementById('apiKey');
+  keyInput.addEventListener('paste', e => {
+    setTimeout(() => { keyInput.value = keyInput.value.trim(); }, 10);
+  });
+  addRecipe(); // start with one empty recipe
+});
+</script>
+</body>
+</html>
